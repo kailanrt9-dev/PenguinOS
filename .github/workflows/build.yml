@@ -1,0 +1,48 @@
+name: Build PenguinOS 1.0
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows you to manually trigger the build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PenguinOS
+        uses: actions/checkout@v4
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses-dev rsync bc bison flex qemu-system-x86
+
+      - name: Download Buildroot
+        run: |
+          git clone --depth 1 https://github.com/buildroot/buildroot.git
+          
+      - name: Configure PenguinOS
+        run: |
+          cd buildroot
+          # Using a standard x86_64 QEMU config as the base
+          make qemu_x86_64_defconfig
+          
+          # Optional: If you eventually add a 'penguin_defconfig' to your repo, 
+          # you would use: make BR2_EXTERNAL=.. penguin_defconfig
+
+      - name: Compile Kernel and Rootfs
+        run: |
+          cd buildroot
+          # This is the "Heavy Lifting" - it will take 30-50 mins on the first run
+          make
+
+      - name: Upload PenguinOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PenguinOS-v1.0-Build
+          path: |
+            buildroot/output/images/bzImage
+            buildroot/output/images/rootfs.ext2
